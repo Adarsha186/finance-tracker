@@ -6,9 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed": "TURSO_DATABASE_URL=file:./finance.db tsx src/lib/seed.ts"
   },
   "dependencies": {
+    "@libsql/client": "^0.17.0",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3"
