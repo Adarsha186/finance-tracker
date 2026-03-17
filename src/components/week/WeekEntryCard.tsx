@@ -23,6 +23,7 @@ const emptyForm = (date: string) => ({
   amount: '',
   category_id: '',
   payment_method_id: '',
+  cc_payment_target_id: '',
   date,
   notes: '',
 });
@@ -86,6 +87,10 @@ export function WeekEntryCard({ week, categories, methods, isCurrentWeek = false
     setTimeout(() => setIncomeFlash(''), 1500);
   }
 
+  const selectedCategory = categories.find((c) => c.id === Number(form.category_id));
+  const isCcPaymentCategory = selectedCategory?.name === 'CC Payment';
+  const creditMethods = methods.filter((m) => m.type === 'credit');
+
   async function handleAddExpense() {
     const amount = parseFloat(form.amount);
     if (!amount || !form.category_id) {
@@ -93,20 +98,25 @@ export function WeekEntryCard({ week, categories, methods, isCurrentWeek = false
       setTimeout(() => setFlash(''), 2000);
       return;
     }
+    if (isCcPaymentCategory && !form.cc_payment_target_id) {
+      setFlash('Select which card you are paying off');
+      setTimeout(() => setFlash(''), 2000);
+      return;
+    }
     setSaving(true);
 
-    const isTransfer =
-      categories.find((c) => c.id === Number(form.category_id))?.is_transfer === 1;
+    const isTransfer = selectedCategory?.is_transfer === 1;
 
     const res = await fetch('/api/expenses', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({
         amount,
-        category_id:       Number(form.category_id),
-        payment_method_id: form.payment_method_id ? Number(form.payment_method_id) : null,
-        date:              form.date,
-        notes:             form.notes || null,
+        category_id:          Number(form.category_id),
+        payment_method_id:    form.payment_method_id ? Number(form.payment_method_id) : null,
+        cc_payment_target_id: form.cc_payment_target_id ? Number(form.cc_payment_target_id) : null,
+        date:                 form.date,
+        notes:                form.notes || null,
       }),
     });
 
@@ -117,7 +127,7 @@ export function WeekEntryCard({ week, categories, methods, isCurrentWeek = false
         cc_payments:    isTransfer ? t.cc_payments + amount : t.cc_payments,
       }));
       // Keep date + method for quick repeat entry; clear the rest
-      setForm((f) => ({ ...f, amount: '', category_id: '', notes: '' }));
+      setForm((f) => ({ ...f, amount: '', category_id: '', cc_payment_target_id: '', notes: '' }));
       setFlash('Added ✓');
     } else {
       setFlash('Error saving');
@@ -205,7 +215,10 @@ export function WeekEntryCard({ week, categories, methods, isCurrentWeek = false
             <div className="grid grid-cols-2 gap-2">
               <select
                 value={form.category_id}
-                onChange={(e) => setField('category_id', e.target.value)}
+                onChange={(e) => {
+                  setField('category_id', e.target.value);
+                  setField('cc_payment_target_id', '');
+                }}
                 className={selectCls}
               >
                 <option value="">Select category</option>
@@ -224,6 +237,19 @@ export function WeekEntryCard({ week, categories, methods, isCurrentWeek = false
                 ))}
               </select>
             </div>
+            {/* CC Payment target card — shown only when CC Payment category is selected */}
+            {isCcPaymentCategory && creditMethods.length > 0 && (
+              <select
+                value={form.cc_payment_target_id}
+                onChange={(e) => setField('cc_payment_target_id', e.target.value)}
+                className={selectCls}
+              >
+                <option value="">Paying off which card?</option>
+                {creditMethods.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
+            )}
             {/* Row 2: Amount + Date */}
             <div className="grid grid-cols-2 gap-2">
               <input

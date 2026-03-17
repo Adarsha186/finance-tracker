@@ -87,7 +87,7 @@ export async function POST(request: Request) {
       total: Number(r.total),
     }));
 
-    const net_savings = income - total_expenses - cc_payments;
+    const net_savings = income - total_expenses;
 
     // ── Write summary + delete expenses (atomic batch) ────────────────────────
     await db.batch([

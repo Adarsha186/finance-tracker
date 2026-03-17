@@ -6,12 +6,13 @@ import { WeekEntryCard } from '@/components/week/WeekEntryCard';
 import { PastWeekCard } from '@/components/week/PastWeekCard';
 import { AnalysisTab } from '@/components/analysis/AnalysisTab';
 import { SettingsTab } from '@/components/settings/SettingsTab';
+import { CreditCardTab } from '@/components/creditcards/CreditCardTab';
 import { useWeekData } from '@/hooks/useWeekData';
 import { fridayOf, todayISO } from '@/utils/week';
 
 const currentWeekStart = fridayOf(todayISO());
 
-type Tab = 'weekly' | 'analysis' | 'settings';
+type Tab = 'weekly' | 'analysis' | 'settings' | 'credit-cards';
 
 export default function Home() {
   const { weeks, categories, methods, loading, reload } = useWeekData();
@@ -38,24 +39,25 @@ export default function Home() {
 
       {/* ── Navbar ── */}
       <nav className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-2xl mx-auto px-4 h-14 grid grid-cols-3 items-center">
+        <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between gap-2">
 
           {/* Left: brand */}
-          <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
+          <span className="shrink-0 text-sm font-bold text-gray-900 dark:text-gray-100">
             Finance Tracker
           </span>
 
           {/* Center: nav links */}
-          <div className="flex items-center justify-center gap-1">
+          <div className="flex items-center gap-0.5">
             {([
-              { id: 'weekly',   label: 'Weekly'   },
-              { id: 'analysis', label: 'Analysis' },
-              { id: 'settings', label: 'Settings' },
+              { id: 'weekly',       label: 'Weekly'   },
+              { id: 'analysis',     label: 'Analysis' },
+              { id: 'credit-cards', label: 'Cards'    },
+              { id: 'settings',     label: 'Settings' },
             ] as { id: Tab; label: string }[]).map(({ id, label }) => (
               <button
                 key={id}
                 onClick={() => setTab(id)}
-                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   tab === id
                     ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50'
@@ -67,7 +69,7 @@ export default function Home() {
           </div>
 
           {/* Right: theme toggle */}
-          <div className="flex justify-end">
+          <div className="shrink-0">
             <ThemeToggle />
           </div>
 
@@ -109,8 +111,11 @@ export default function Home() {
         {/* ── Analysis tab ── */}
         {tab === 'analysis' && <AnalysisTab start={start} end={end} onStartChange={setStart} onEndChange={setEnd} />}
 
+        {/* ── Credit Cards tab ── */}
+        {tab === 'credit-cards' && <CreditCardTab />}
+
         {/* ── Settings tab ── */}
-        {tab === 'settings' && <SettingsTab />}
+        {tab === 'settings' && <SettingsTab onDataChange={reload} />}
 
       </div>
     </div>

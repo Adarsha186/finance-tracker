@@ -26,6 +26,15 @@ export async function POST(request: Request) {
       sql: 'INSERT INTO payment_methods (name, type) VALUES (?, ?) RETURNING *',
       args: [name.trim(), type],
     });
+
+    if (type === 'credit') {
+      const newId = (result.rows[0] as { id: number }).id;
+      await db.execute({
+        sql: 'INSERT OR IGNORE INTO cc_balances (payment_method_id, balance) VALUES (?, 0)',
+        args: [newId],
+      });
+    }
+
     return NextResponse.json(result.rows[0], { status: 201 });
   } catch (err: unknown) {
     if (err instanceof Error && err.message?.includes('UNIQUE')) {

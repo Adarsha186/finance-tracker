@@ -15,23 +15,27 @@ const JOINED_SELECT = `
     e.payment_method_id,
     pm.name             AS payment_method_name,
     pm.type             AS payment_method_type,
+    e.cc_payment_target_id,
+    tpm.name            AS cc_payment_target_name,
     e.date,
     e.week_number,
     e.year,
     e.notes
   FROM expenses e
   JOIN categories c ON c.id = e.category_id
-  LEFT JOIN payment_methods pm ON pm.id = e.payment_method_id
+  LEFT JOIN payment_methods pm  ON pm.id  = e.payment_method_id
+  LEFT JOIN payment_methods tpm ON tpm.id = e.cc_payment_target_id
 `;
 
-// GET /api/expenses?week=11&year=2026&category_id=3
+// GET /api/expenses?week=11&year=2026&category_id=3&payment_method_id=1
 export async function GET(req: NextRequest) {
   try {
     const db = await getDb();
     const { searchParams } = new URL(req.url);
-    const week        = searchParams.get('week');
-    const year        = searchParams.get('year');
-    const category_id = searchParams.get('category_id');
+    const week              = searchParams.get('week');
+    const year              = searchParams.get('year');
+    const category_id       = searchParams.get('category_id');
+    const payment_method_id = searchParams.get('payment_method_id');
 
     const week_start = searchParams.get('week_start'); // YYYY-MM-DD of the Friday
 
@@ -53,6 +57,11 @@ export async function GET(req: NextRequest) {
       conditions.push('e.category_id = ?');
       args.push(Number(category_id));
     }
+    if (payment_method_id) {
+      // For a credit card: fetch charges on the card OR payments targeting the card
+      conditions.push('(e.payment_method_id = ? OR e.cc_payment_target_id = ?)');
+      args.push(Number(payment_method_id), Number(payment_method_id));
+    }
 
     const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
     const result = await db.execute({
@@ -67,11 +76,11 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/expenses  body: { amount, category_id, payment_method_id?, date, notes? }
+// POST /api/expenses  body: { amount, category_id, payment_method_id?, cc_payment_target_id?, date, notes? }
 export async function POST(req: NextRequest) {
   try {
     const db = await getDb();
-    const { amount, category_id, payment_method_id, date, notes } = await req.json();
+    const { amount, category_id, payment_method_id, cc_payment_target_id, date, notes } = await req.json();
 
     if (!amount || !category_id || !date) {
       return NextResponse.json(
@@ -93,10 +102,37 @@ export async function POST(req: NextRequest) {
     const { week_number, year } = weekFromDateStr(date);
 
     const result = await db.execute({
-      sql: `INSERT INTO expenses (amount, category_id, payment_method_id, date, week_number, year, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      args: [amount, category_id, payment_method_id ?? null, date, week_number, year, notes ?? null],
+      sql: `INSERT INTO expenses (amount, category_id, payment_method_id, cc_payment_target_id, date, week_number, year, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        amount,
+        category_id,
+        payment_method_id ?? null,
+        cc_payment_target_id ?? null,
+        date,
+        week_number,
+        year,
+        notes ?? null,
+      ],
     });
+
+    // ── Update CC balances ──────────────────────────────────────────────────
+    const upsertBalance = `
+      INSERT INTO cc_balances (payment_method_id, balance) VALUES (?, ?)
+      ON CONFLICT(payment_method_id) DO UPDATE SET balance = balance + excluded.balance`;
+
+    if (cc_payment_target_id) {
+      // CC Payment: paying off a specific credit card — reduce its balance
+      await db.execute({ sql: upsertBalance, args: [cc_payment_target_id, -amount] });
+    } else if (payment_method_id) {
+      // Charged to a credit card: increase its balance
+      const pmRow = await db.execute({
+        sql: 'SELECT type FROM payment_methods WHERE id = ?', args: [payment_method_id],
+      });
+      if ((pmRow.rows[0]?.type as string) === 'credit') {
+        await db.execute({ sql: upsertBalance, args: [payment_method_id, amount] });
+      }
+    }
 
     const inserted = await db.execute({
       sql:  `${JOINED_SELECT} WHERE e.id = ?`,

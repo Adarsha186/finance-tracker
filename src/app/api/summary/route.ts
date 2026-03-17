@@ -68,7 +68,7 @@ export async function GET() {
 
     const open = Array.from(map.values()).map((w) => ({
       ...w,
-      net_savings: w.income - w.total_expenses - w.cc_payments,
+      net_savings: w.income - w.total_expenses,
     }));
 
     const summaries = [...closed, ...open].sort((a, b) =>

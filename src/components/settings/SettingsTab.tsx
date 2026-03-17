@@ -11,7 +11,7 @@ const fieldCls =
   'focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500';
 import type { Category, PaymentMethod } from '@/types';
 
-export function SettingsTab() {
+export function SettingsTab({ onDataChange }: { onDataChange?: () => void }) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [methods, setMethods]       = useState<PaymentMethod[]>([]);
 
@@ -22,6 +22,7 @@ export function SettingsTab() {
     ]);
     setCategories(cats);
     setMethods(pms);
+    onDataChange?.();
   }
 
   useEffect(() => { load(); }, []);

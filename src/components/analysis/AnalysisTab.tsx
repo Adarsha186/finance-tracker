@@ -96,9 +96,14 @@ export function AnalysisTab({ start, end, onStartChange, onEndChange }: Props) {
             <StatCard label="Total Income"   value={fmt(data.income)}         color="text-blue-500" />
             <StatCard label="Total Expenses" value={fmt(data.total_expenses)} color="text-orange-500" />
             {data.cc_payments > 0 && (
-              <StatCard label="Transfers" value={fmt(data.cc_payments)} color="text-purple-500" />
+              <StatCard label="CC Payments" value={fmt(data.cc_payments)} color="text-purple-500" />
             )}
-            <StatCard label="Net Savings" value={fmt(data.net_savings)} color={savingsColor} />
+            <StatCard
+              label="Net Savings"
+              value={fmt(data.net_savings)}
+              color={savingsColor}
+              fullRow={data.cc_payments === 0}
+            />
           </div>
 
           {/* ── Category breakdown ── */}
@@ -179,13 +184,15 @@ function StatCard({
   label,
   value,
   color,
+  fullRow = false,
 }: {
   label: string;
   value: string;
   color: string;
+  fullRow?: boolean;
 }) {
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4">
+    <div className={`bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 ${fullRow ? 'col-span-2' : ''}`}>
       <p className="text-xs text-gray-400 dark:text-gray-500 mb-1">{label}</p>
       <p className={`text-lg font-bold ${color}`}>{value}</p>
     </div>
