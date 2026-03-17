@@ -35,6 +35,20 @@ export async function POST(request: Request) {
   }
 }
 
+export async function PATCH(request: Request) {
+  try {
+    const { id, is_transfer } = await request.json();
+    if (!id) return NextResponse.json({ error: 'ID is required' }, { status: 400 });
+
+    const db = await getDb();
+    await db.execute({ sql: 'UPDATE categories SET is_transfer = ? WHERE id = ?', args: [is_transfer ? 1 : 0, id] });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ error: 'Failed to update category' }, { status: 500 });
+  }
+}
+
 export async function DELETE(request: Request) {
   try {
     const { id } = await request.json();

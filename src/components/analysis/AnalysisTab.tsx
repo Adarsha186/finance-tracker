@@ -93,10 +93,12 @@ export function AnalysisTab({ start, end, onStartChange, onEndChange }: Props) {
         <>
           {/* ── Summary cards ── */}
           <div className="grid grid-cols-2 gap-3">
-            <StatCard label="Total Income"   value={fmt(data.income)}          color="text-blue-500" />
-            <StatCard label="Total Expenses" value={fmt(data.total_expenses)}  color="text-orange-500" />
-            <StatCard label="CC Payments"    value={fmt(data.cc_payments)}     color="text-purple-500" />
-            <StatCard label="Net Savings"    value={fmt(data.net_savings)}     color={savingsColor} />
+            <StatCard label="Total Income"   value={fmt(data.income)}         color="text-blue-500" />
+            <StatCard label="Total Expenses" value={fmt(data.total_expenses)} color="text-orange-500" />
+            {data.cc_payments > 0 && (
+              <StatCard label="Transfers" value={fmt(data.cc_payments)} color="text-purple-500" />
+            )}
+            <StatCard label="Net Savings" value={fmt(data.net_savings)} color={savingsColor} />
           </div>
 
           {/* ── Category breakdown ── */}

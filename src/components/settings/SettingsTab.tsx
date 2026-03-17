@@ -37,9 +37,10 @@ export function SettingsTab() {
 // ─── Categories ────────────────────────────────────────────────────────────────
 
 function CategorySection({ categories, reload }: { categories: Category[]; reload: () => void }) {
-  const [name, setName]   = useState('');
-  const [error, setError] = useState('');
-  const [saving, setSaving] = useState(false);
+  const [name, setName]           = useState('');
+  const [isTransfer, setIsTransfer] = useState(false);
+  const [error, setError]         = useState('');
+  const [saving, setSaving]       = useState(false);
 
   async function add() {
     if (!name.trim()) return;
@@ -48,10 +49,11 @@ function CategorySection({ categories, reload }: { categories: Category[]; reloa
     const res = await fetch('/api/categories', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, is_transfer: false }),
+      body: JSON.stringify({ name, is_transfer: isTransfer }),
     });
     if (res.ok) {
       setName('');
+      setIsTransfer(false);
       reload();
     } else {
       const data = await res.json();
@@ -60,15 +62,24 @@ function CategorySection({ categories, reload }: { categories: Category[]; reloa
     setSaving(false);
   }
 
+  async function toggleTransfer(id: number, current: 0 | 1) {
+    const res = await fetch('/api/categories', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, is_transfer: !current }),
+    });
+    if (res.ok) reload();
+    else setError('Failed to update category');
+  }
+
   async function remove(id: number) {
     const res = await fetch('/api/categories', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
     });
-    if (res.ok) {
-      reload();
-    } else {
+    if (res.ok) reload();
+    else {
       const data = await res.json();
       setError(data.error ?? 'Failed to delete');
     }
@@ -98,14 +109,24 @@ function CategorySection({ categories, reload }: { categories: Category[]; reloa
         </button>
       </div>
 
+      <label className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={isTransfer}
+          onChange={(e) => setIsTransfer(e.target.checked)}
+          className="rounded border-gray-300 dark:border-gray-600"
+        />
+        Mark as transfer (e.g. Savings — excluded from expenses)
+      </label>
+
       {error && <p className="text-xs text-red-500">{error}</p>}
 
-      {/* List */}
       {real.length > 0 && (
         <div className="space-y-1">
           <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Expense</p>
           {real.map((c) => (
-            <ItemRow key={c.id} label={c.name} onDelete={() => remove(c.id)} />
+            <ItemRow key={c.id} label={c.name} onDelete={() => remove(c.id)}
+              onToggleTransfer={() => toggleTransfer(c.id, c.is_transfer)} transferLabel="Mark as transfer" />
           ))}
         </div>
       )}
@@ -114,7 +135,8 @@ function CategorySection({ categories, reload }: { categories: Category[]; reloa
         <div className="space-y-1">
           <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Transfer</p>
           {transfers.map((c) => (
-            <ItemRow key={c.id} label={c.name} badge="transfer" onDelete={() => remove(c.id)} />
+            <ItemRow key={c.id} label={c.name} badge="transfer" onDelete={() => remove(c.id)}
+              onToggleTransfer={() => toggleTransfer(c.id, c.is_transfer)} transferLabel="Mark as expense" />
           ))}
         </div>
       )}
@@ -242,7 +264,13 @@ const badgeStyles: Record<string, string> = {
   transfer: 'bg-amber-100  dark:bg-amber-900/40  text-amber-600  dark:text-amber-400',
 };
 
-function ItemRow({ label, badge, onDelete }: { label: string; badge?: string; onDelete: () => void }) {
+function ItemRow({ label, badge, onDelete, onToggleTransfer, transferLabel }: {
+  label: string;
+  badge?: string;
+  onDelete: () => void;
+  onToggleTransfer?: () => void;
+  transferLabel?: string;
+}) {
   return (
     <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800/60 group">
       <div className="flex items-center gap-2">
@@ -253,15 +281,25 @@ function ItemRow({ label, badge, onDelete }: { label: string; badge?: string; on
         )}
         <span className="text-sm text-gray-700 dark:text-gray-300">{label}</span>
       </div>
-      <button
-        onClick={onDelete}
-        className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all p-1 rounded"
-        aria-label={`Delete ${label}`}
-      >
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-        </svg>
-      </button>
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+        {onToggleTransfer && (
+          <button
+            onClick={onToggleTransfer}
+            className="text-[10px] px-2 py-0.5 rounded border border-gray-200 dark:border-gray-600 text-gray-400 dark:text-gray-500 hover:border-amber-400 hover:text-amber-500 transition-colors"
+          >
+            {transferLabel}
+          </button>
+        )}
+        <button
+          onClick={onDelete}
+          className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded"
+          aria-label={`Delete ${label}`}
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </button>
+      </div>
     </div>
   );
 }

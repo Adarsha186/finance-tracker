@@ -59,6 +59,8 @@ async function initSchema(client: Client): Promise<void> {
       year              INTEGER NOT NULL,
       notes             TEXT
     )`,
+    // Ensure CC Payment is treated as a regular expense (not a transfer)
+    `UPDATE categories SET is_transfer = 0 WHERE name = 'CC Payment'`,
     `CREATE INDEX IF NOT EXISTS idx_income_week   ON income(year, week_number)`,
     `CREATE INDEX IF NOT EXISTS idx_expenses_week ON expenses(year, week_number)`,
     `CREATE INDEX IF NOT EXISTS idx_expenses_cat  ON expenses(category_id)`,
