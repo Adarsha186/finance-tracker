@@ -5,19 +5,26 @@ import type { WeekSummary } from '@/types';
 
 export const runtime = 'nodejs';
 
-/**
- * GET /api/summary
- *
- * Aggregates all income and expense rows, groups them by Friday-start pay week,
- * and returns one WeekSummary per week sorted newest first.
- *
- * CC Payment rows (is_transfer = 1) are counted separately and excluded from
- * total_expenses so they don't inflate the net savings calculation.
- */
 export async function GET() {
   try {
     const db = await getDb();
 
+    // ── Closed weeks from week_summaries ──────────────────────────────────────
+    const closedRows = await db.execute(
+      'SELECT week_start, income, total_expenses, cc_payments, net_savings FROM week_summaries'
+    );
+    const closedWeekStarts = new Set(closedRows.rows.map((r) => r.week_start as string));
+
+    const closed: WeekSummary[] = closedRows.rows.map((r) => ({
+      week_start:     r.week_start     as string,
+      income:         Number(r.income),
+      total_expenses: Number(r.total_expenses),
+      cc_payments:    Number(r.cc_payments),
+      net_savings:    Number(r.net_savings),
+      is_closed:      true,
+    }));
+
+    // ── Open weeks from live income + expenses ────────────────────────────────
     const [incomeRows, expenseRows] = await Promise.all([
       db.execute('SELECT amount, date FROM income ORDER BY date'),
       db.execute(`
@@ -30,6 +37,7 @@ export async function GET() {
     const map = new Map<string, WeekSummary>();
 
     function ensure(friday: string): WeekSummary {
+      if (closedWeekStarts.has(friday)) return null!; // skip closed weeks
       if (!map.has(friday)) {
         map.set(friday, {
           week_start:     friday,
@@ -37,6 +45,7 @@ export async function GET() {
           total_expenses: 0,
           cc_payments:    0,
           net_savings:    0,
+          is_closed:      false,
         });
       }
       return map.get(friday)!;
@@ -44,11 +53,12 @@ export async function GET() {
 
     for (const row of incomeRows.rows) {
       const week = ensure(fridayOf(row.date as string));
-      week.income += Number(row.amount);
+      if (week) week.income += Number(row.amount);
     }
 
     for (const row of expenseRows.rows) {
       const week = ensure(fridayOf(row.date as string));
+      if (!week) continue;
       if (Number(row.is_transfer) === 1) {
         week.cc_payments += Number(row.amount);
       } else {
@@ -56,9 +66,14 @@ export async function GET() {
       }
     }
 
-    const summaries = Array.from(map.values())
-      .map((w) => ({ ...w, net_savings: w.income - w.total_expenses }))
-      .sort((a, b) => b.week_start.localeCompare(a.week_start));
+    const open = Array.from(map.values()).map((w) => ({
+      ...w,
+      net_savings: w.income - w.total_expenses - w.cc_payments,
+    }));
+
+    const summaries = [...closed, ...open].sort((a, b) =>
+      b.week_start.localeCompare(a.week_start)
+    );
 
     return NextResponse.json(summaries);
   } catch (err) {

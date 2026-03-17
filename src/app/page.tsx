@@ -1,16 +1,23 @@
 'use client';
 
+import { useState } from 'react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { WeekEntryCard } from '@/components/week/WeekEntryCard';
 import { PastWeekCard } from '@/components/week/PastWeekCard';
+import { AnalysisTab } from '@/components/analysis/AnalysisTab';
+import { SettingsTab } from '@/components/settings/SettingsTab';
 import { useWeekData } from '@/hooks/useWeekData';
-import { fmt } from '@/utils/format';
 import { fridayOf, todayISO } from '@/utils/week';
 
 const currentWeekStart = fridayOf(todayISO());
 
+type Tab = 'weekly' | 'analysis' | 'settings';
+
 export default function Home() {
-  const { weeks, categories, methods, loading } = useWeekData();
+  const { weeks, categories, methods, loading, reload } = useWeekData();
+  const [tab,   setTab]   = useState<Tab>('weekly');
+  const [start, setStart] = useState('');
+  const [end,   setEnd]   = useState(todayISO());
 
   // Ensure the current week always has a card, even before data is entered
   const allWeeks = (() => {
@@ -25,61 +32,85 @@ export default function Home() {
 
   const currentWeek = allWeeks.find((w) => w.week_start === currentWeekStart);
   const pastWeeks   = allWeeks.filter((w) => w.week_start !== currentWeekStart);
-  const totalSaved  = weeks.reduce((sum, w) => sum + w.net_savings, 0);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors">
-      <div className="max-w-xl mx-auto px-4 py-10 space-y-6">
 
-        {/* ── Header ── */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              Finance Tracker
-            </h1>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-              Weekly · Friday → Thursday
-            </p>
+      {/* ── Navbar ── */}
+      <nav className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur border-b border-gray-200 dark:border-gray-800">
+        <div className="max-w-2xl mx-auto px-4 h-14 grid grid-cols-3 items-center">
+
+          {/* Left: brand */}
+          <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
+            Finance Tracker
+          </span>
+
+          {/* Center: nav links */}
+          <div className="flex items-center justify-center gap-1">
+            {([
+              { id: 'weekly',   label: 'Weekly'   },
+              { id: 'analysis', label: 'Analysis' },
+              { id: 'settings', label: 'Settings' },
+            ] as { id: Tab; label: string }[]).map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => setTab(id)}
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  tab === id
+                    ? 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
-          <div className="flex items-center gap-3">
-            {!loading && (
-              <div className="text-right">
-                <p className={`text-lg font-bold ${totalSaved >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                  {fmt(totalSaved)}
-                </p>
-                <p className="text-xs text-gray-400 dark:text-gray-500">all-time saved</p>
-              </div>
-            )}
+
+          {/* Right: theme toggle */}
+          <div className="flex justify-end">
             <ThemeToggle />
           </div>
+
         </div>
+      </nav>
 
-        {/* ── Content ── */}
-        {loading ? (
-          <p className="text-sm text-gray-400 dark:text-gray-500">Loading...</p>
-        ) : (
-          <>
-            {currentWeek && (
-              <WeekEntryCard
-                week={currentWeek}
-                categories={categories}
-                methods={methods}
-                isCurrentWeek
-              />
-            )}
+      {/* ── Page content ── */}
+      <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
 
-            {pastWeeks.length > 0 && (
-              <section className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 px-1">
-                  Past Weeks
-                </p>
-                {pastWeeks.map((w) => (
-                  <PastWeekCard key={w.week_start} week={w} />
-                ))}
-              </section>
-            )}
-          </>
+        {/* ── Weekly tab ── */}
+        {tab === 'weekly' && (
+          loading ? (
+            <p className="text-sm text-gray-400 dark:text-gray-500">Loading...</p>
+          ) : (
+            <>
+              {currentWeek && (
+                <WeekEntryCard
+                  week={currentWeek}
+                  categories={categories}
+                  methods={methods}
+                  isCurrentWeek
+                />
+              )}
+
+              {pastWeeks.length > 0 && (
+                <section className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 px-1">
+                    Past Weeks
+                  </p>
+                  {pastWeeks.map((w) => (
+                    <PastWeekCard key={w.week_start} week={w} onClose={reload} />
+                  ))}
+                </section>
+              )}
+            </>
+          )
         )}
+
+        {/* ── Analysis tab ── */}
+        {tab === 'analysis' && <AnalysisTab start={start} end={end} onStartChange={setStart} onEndChange={setEnd} />}
+
+        {/* ── Settings tab ── */}
+        {tab === 'settings' && <SettingsTab />}
 
       </div>
     </div>

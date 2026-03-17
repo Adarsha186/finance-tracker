@@ -62,5 +62,14 @@ async function initSchema(client: Client): Promise<void> {
     `CREATE INDEX IF NOT EXISTS idx_income_week   ON income(year, week_number)`,
     `CREATE INDEX IF NOT EXISTS idx_expenses_week ON expenses(year, week_number)`,
     `CREATE INDEX IF NOT EXISTS idx_expenses_cat  ON expenses(category_id)`,
+    `CREATE TABLE IF NOT EXISTS week_summaries (
+      week_start               TEXT PRIMARY KEY,
+      income                   REAL NOT NULL DEFAULT 0,
+      total_expenses           REAL NOT NULL DEFAULT 0,
+      cc_payments              REAL NOT NULL DEFAULT 0,
+      net_savings              REAL NOT NULL DEFAULT 0,
+      category_breakdown       TEXT NOT NULL DEFAULT '[]',
+      payment_method_breakdown TEXT NOT NULL DEFAULT '[]'
+    )`,
   ], 'write');
 }

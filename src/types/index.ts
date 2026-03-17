@@ -50,4 +50,5 @@ export interface WeekSummary {
   total_expenses: number;   // real spend, CC Payments excluded
   cc_payments: number;      // CC Payment transfers total
   net_savings: number;      // income - total_expenses
+  is_closed: boolean;       // true = rolled up into week_summaries
 }
