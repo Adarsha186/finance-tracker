@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     });
 
     if (type === 'credit') {
-      const newId = (result.rows[0] as { id: number }).id;
+      const newId = (result.rows[0] as unknown as { id: number }).id;
       await db.execute({
         sql: 'INSERT OR IGNORE INTO cc_balances (payment_method_id, balance) VALUES (?, 0)',
         args: [newId],
