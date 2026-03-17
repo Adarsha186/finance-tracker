@@ -25,7 +25,7 @@ export default function Home() {
     const exists = weeks.some((w) => w.week_start === currentWeekStart);
     if (exists) return weeks;
     return [
-      { week_start: currentWeekStart, income: 0, total_expenses: 0, cc_payments: 0, net_savings: 0 },
+      { week_start: currentWeekStart, income: 0, total_expenses: 0, cc_payments: 0, net_savings: 0, is_closed: false },
       ...weeks,
     ];
   })();
