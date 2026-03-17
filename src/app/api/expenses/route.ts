@@ -82,14 +82,11 @@ export async function POST(req: NextRequest) {
     const db = await getDb();
     const { amount, category_id, payment_method_id, cc_payment_target_id, date, notes } = await req.json();
 
-    if (!amount || !category_id || !date) {
-      return NextResponse.json(
-        { error: 'amount, category_id, and date are required' },
-        { status: 400 }
-      );
-    }
     if (typeof amount !== 'number' || amount <= 0) {
       return NextResponse.json({ error: 'amount must be a positive number' }, { status: 400 });
+    }
+    if (!category_id || !date) {
+      return NextResponse.json({ error: 'category_id and date are required' }, { status: 400 });
     }
 
     const cat = await db.execute({
@@ -129,7 +126,7 @@ export async function POST(req: NextRequest) {
       const pmRow = await db.execute({
         sql: 'SELECT type FROM payment_methods WHERE id = ?', args: [payment_method_id],
       });
-      if ((pmRow.rows[0]?.type as string) === 'credit') {
+      if ((pmRow.rows[0]?.type as unknown as string) === 'credit') {
         await db.execute({ sql: upsertBalance, args: [payment_method_id, amount] });
       }
     }
@@ -139,6 +136,9 @@ export async function POST(req: NextRequest) {
       args: [result.lastInsertRowid!],
     });
 
+    if (!inserted.rows[0]) {
+      return NextResponse.json({ error: 'Expense saved but could not be retrieved' }, { status: 500 });
+    }
     return NextResponse.json(inserted.rows[0] as unknown as ExpenseWithRefs, { status: 201 });
   } catch (err) {
     console.error(err);

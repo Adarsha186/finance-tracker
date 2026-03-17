@@ -29,6 +29,7 @@ export function useWeekData(): UseWeekDataReturn {
         fetch('/api/categories'),
         fetch('/api/payment-methods'),
       ]);
+      if (!sumRes.ok || !catRes.ok || !pmRes.ok) throw new Error('Failed to load data');
       const [sum, cats, pms] = await Promise.all([
         sumRes.json(),
         catRes.json(),

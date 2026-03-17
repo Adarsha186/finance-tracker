@@ -255,7 +255,7 @@ function CardPieChart({ card, activity }: { card: CreditCardBalance; activity?: 
             <Pie data={pieData} cx="50%" cy="50%" innerRadius={28} outerRadius={48} paddingAngle={2} dataKey="value">
               {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
             </Pie>
-            <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px', fontSize: '12px', color: '#f3f4f6' }} />
+            <Tooltip formatter={(v) => fmt(Number(v))} contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px', fontSize: '12px', color: '#f3f4f6' }} />
           </PieChart>
         </ResponsiveContainer>
       </div>
@@ -280,7 +280,7 @@ function CardPieChart({ card, activity }: { card: CreditCardBalance; activity?: 
             <Pie data={pieData} cx="50%" cy="50%" innerRadius={28} outerRadius={48} paddingAngle={2} dataKey="value">
               {pieData.map((entry, i) => <Cell key={i} fill={segColor(entry.name)} />)}
             </Pie>
-            <Tooltip formatter={(v: number) => fmt(v)} contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px', fontSize: '12px', color: '#f3f4f6' }} />
+            <Tooltip formatter={(v) => fmt(Number(v))} contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px', fontSize: '12px', color: '#f3f4f6' }} />
           </PieChart>
         </ResponsiveContainer>
         {outstanding === 0 && (

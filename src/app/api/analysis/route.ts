@@ -50,8 +50,10 @@ export async function GET(request: Request) {
       closedExpenses += Number(row.total_expenses);
       closedCC       += Number(row.cc_payments);
 
-      const cats: { name: string; total: number }[]                  = JSON.parse(row.category_breakdown as string ?? '[]');
-      const pms:  { name: string; type: string; total: number }[]    = JSON.parse(row.payment_method_breakdown as string ?? '[]');
+      let cats: { name: string; total: number }[] = [];
+      let pms:  { name: string; type: string; total: number }[] = [];
+      try { cats = JSON.parse((row.category_breakdown as string) ?? '[]'); } catch { cats = []; }
+      try { pms  = JSON.parse((row.payment_method_breakdown as string) ?? '[]'); } catch { pms = []; }
 
       for (const c of cats) catMap.set(c.name, (catMap.get(c.name) ?? 0) + c.total);
       for (const p of pms)  {
@@ -61,16 +63,21 @@ export async function GET(request: Request) {
     }
 
     // ── Live expenses (open weeks only) ───────────────────────────────────────
-    const dateFilter = (col: string) => {
-      const parts: string[] = [];
-      if (start) parts.push(`${col} >= '${start}'`);
-      if (end)   parts.push(`${col} <= '${end}'`);
-      return parts.length ? 'AND ' + parts.join(' AND ') : '';
-    };
+    // Build parameterized date conditions to avoid SQL injection
+    const incomeArgs: string[] = [];
+    const incomeConds: string[] = ['1=1'];
+    if (start) { incomeConds.push('date >= ?');   incomeArgs.push(start); }
+    if (end)   { incomeConds.push('date <= ?');   incomeArgs.push(end); }
 
-    const liveIncomeRows = await db.execute(
-      `SELECT amount, date FROM income WHERE 1=1 ${dateFilter('date')}`
-    );
+    const expArgs: string[] = [];
+    const expConds: string[] = ['1=1'];
+    if (start) { expConds.push('e.date >= ?'); expArgs.push(start); }
+    if (end)   { expConds.push('e.date <= ?'); expArgs.push(end); }
+
+    const liveIncomeRows = await db.execute({
+      sql:  `SELECT amount, date FROM income WHERE ${incomeConds.join(' AND ')}`,
+      args: incomeArgs,
+    });
 
     // Build closed week date ranges [friday, thursday] so we can exclude
     // income rows that belong to a closed week (income is never deleted on rollup)
@@ -86,14 +93,15 @@ export async function GET(request: Request) {
       if (!inClosed) liveIncome += Number(row.amount);
     }
 
-    const liveCatRows = await db.execute(
-      `SELECT c.name, c.is_transfer, COALESCE(SUM(e.amount), 0) AS total
-       FROM expenses e
-       JOIN categories c ON c.id = e.category_id
-       WHERE 1=1 ${dateFilter('e.date')}
-       GROUP BY c.id, c.name, c.is_transfer
-       ORDER BY total DESC`
-    );
+    const liveCatRows = await db.execute({
+      sql: `SELECT c.name, c.is_transfer, COALESCE(SUM(e.amount), 0) AS total
+            FROM expenses e
+            JOIN categories c ON c.id = e.category_id
+            WHERE ${expConds.join(' AND ')}
+            GROUP BY c.id, c.name, c.is_transfer
+            ORDER BY total DESC`,
+      args: expArgs,
+    });
 
     let liveExpenses = 0;
     let liveCC       = 0;
@@ -108,15 +116,17 @@ export async function GET(request: Request) {
       }
     }
 
-    const livePmRows = await db.execute(
-      `SELECT pm.name, pm.type, COALESCE(SUM(e.amount), 0) AS total
-       FROM expenses e
-       JOIN payment_methods pm ON pm.id = e.payment_method_id
-       JOIN categories c ON c.id = e.category_id
-       WHERE c.is_transfer = 0 ${dateFilter('e.date')}
-       GROUP BY pm.id, pm.name, pm.type
-       ORDER BY total DESC`
-    );
+    const pmExpConds = ['c.is_transfer = 0', ...expConds.slice(1)];
+    const livePmRows = await db.execute({
+      sql: `SELECT pm.name, pm.type, COALESCE(SUM(e.amount), 0) AS total
+            FROM expenses e
+            JOIN payment_methods pm ON pm.id = e.payment_method_id
+            JOIN categories c ON c.id = e.category_id
+            WHERE ${pmExpConds.join(' AND ')}
+            GROUP BY pm.id, pm.name, pm.type
+            ORDER BY total DESC`,
+      args: expArgs,
+    });
 
     for (const row of livePmRows.rows) {
       const name = row.name as string;
@@ -133,7 +143,7 @@ export async function GET(request: Request) {
       income,
       total_expenses,
       cc_payments,
-      net_savings: income - total_expenses - cc_payments,
+      net_savings: income - total_expenses,
       by_category: Array.from(catMap.entries())
         .map(([name, total]) => ({ name, total }))
         .sort((a, b) => b.total - a.total),
