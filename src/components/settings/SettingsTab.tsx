@@ -70,7 +70,7 @@ function CategorySection({ categories, reload }: { categories: Category[]; reloa
       reload();
     } else {
       const data = await res.json();
-      alert(data.error ?? 'Failed to delete');
+      setError(data.error ?? 'Failed to delete');
     }
   }
 
@@ -160,7 +160,7 @@ function PaymentMethodSection({ methods, reload }: { methods: PaymentMethod[]; r
       reload();
     } else {
       const data = await res.json();
-      alert(data.error ?? 'Failed to delete');
+      setError(data.error ?? 'Failed to delete');
     }
   }
 
