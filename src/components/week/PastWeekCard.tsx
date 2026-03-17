@@ -136,9 +136,7 @@ export function PastWeekCard({ week, onClose }: Props) {
               <Row label="Income"    value={fmt(week.income)}         color="text-blue-500" />
               <Row label="Expenses"  value={fmt(week.total_expenses)} color="text-orange-500" />
               {week.cc_payments > 0 && (
-                {week.cc_payments > 0 && (
                 <Row label="Transfers" value={fmt(week.cc_payments)} color="text-purple-500" />
-              )}
               )}
               <Row
                 label="Net savings"
