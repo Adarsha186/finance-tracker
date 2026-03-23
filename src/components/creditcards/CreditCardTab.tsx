@@ -9,8 +9,6 @@ import type { CreditCardBalance, ExpenseWithRefs } from '@/types';
 interface CardActivity { expenses: ExpenseWithRefs[] }
 interface AdjustState  { cardId: number; value: string }
 
-const COLORS = ['#8b5cf6', '#a78bfa', '#c4b5fd', '#6d28d9', '#ddd6fe', '#4c1d95'];
-
 export function CreditCardTab() {
   const [cards, setCards]       = useState<CreditCardBalance[]>([]);
   const [activity, setActivity] = useState<Record<number, CardActivity>>({});
@@ -233,43 +231,16 @@ export function CreditCardTab() {
 }
 
 // ── Per-card pie chart ──────────────────────────────────────────────────────
-// • Has charges  → category breakdown of spending on the card
-// • No charges, but has payments or outstanding balance → paid vs outstanding donut
-// • Nothing at all → empty state
+// Always shows paid vs outstanding donut
 function CardPieChart({ card, activity }: { card: CreditCardBalance; activity?: CardActivity }) {
-  const charges  = (activity?.expenses ?? []).filter((e) => !e.cc_payment_target_id);
   const payments = (activity?.expenses ?? []).filter((e) => e.cc_payment_target_id === card.payment_method_id);
-
-  // ── Category breakdown (preferred when purchases exist) ──
-  if (charges.length > 0) {
-    const byCategory: Record<string, number> = {};
-    for (const e of charges) {
-      byCategory[e.category_name] = (byCategory[e.category_name] ?? 0) + e.amount;
-    }
-    const pieData = Object.entries(byCategory).map(([name, value]) => ({ name, value }));
-
-    return (
-      <div className="h-28">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie data={pieData} cx="50%" cy="50%" innerRadius={28} outerRadius={48} paddingAngle={2} dataKey="value">
-              {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-            </Pie>
-            <Tooltip formatter={(v) => fmt(Number(v))} contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px', fontSize: '12px', color: '#f3f4f6' }} />
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
-    );
-  }
-
-  // ── Paid vs outstanding (when only payments exist) ──
   const totalPaid = payments.reduce((s, e) => s + e.amount, 0);
   const outstanding = Math.max(card.balance, 0);
 
   if (totalPaid > 0 || outstanding > 0) {
     const pieData = [
-      ...(totalPaid    > 0 ? [{ name: 'Paid',        value: totalPaid    }] : []),
-      ...(outstanding  > 0 ? [{ name: 'Outstanding', value: outstanding  }] : []),
+      ...(totalPaid   > 0 ? [{ name: 'Paid',        value: totalPaid   }] : []),
+      ...(outstanding > 0 ? [{ name: 'Outstanding', value: outstanding }] : []),
     ];
     const segColor = (name: string) => name === 'Paid' ? '#10b981' : '#ef4444';
 
