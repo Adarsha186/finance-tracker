@@ -100,22 +100,6 @@ export function CreditCardTab() {
             {/* Pie chart — category breakdown of charges */}
             <CardPieChart card={card} activity={activity[card.payment_method_id]} />
 
-            {/* Progress bar */}
-            {card.open_charges > 0 && (
-              <div className="space-y-1">
-                <div className="h-1.5 w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-                  <div
-                    className="h-1.5 rounded-full bg-purple-500 transition-all duration-300"
-                    style={{ width: `${Math.min((card.open_payments / card.open_charges) * 100, 100)}%` }}
-                  />
-                </div>
-                <div className="flex justify-between text-xs text-gray-400 dark:text-gray-500">
-                  <span>Paid {fmt(card.open_payments)}</span>
-                  <span>{Math.round((card.open_payments / card.open_charges) * 100)}%</span>
-                </div>
-              </div>
-            )}
-
             {/* Adjust balance */}
             {adjust?.cardId === card.payment_method_id ? (
               <div className="flex gap-1.5">
